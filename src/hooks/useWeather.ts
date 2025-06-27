@@ -2,7 +2,7 @@ import axios from "axios";
 import { z } from "zod";
 // import { object, string, number, InferOutput, parse } from "valibot";
 import { SearchType } from "../types";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 // function isWeatherResponse(weather: unknown): weather is Weather {
 //     return (
@@ -40,29 +40,31 @@ export type Weather = z.infer<typeof Weather>
 // });
 // type Weather = InferOutput<typeof WeatherSchema>;
 
-
+const initialState = {
+    name: '',
+    main: {
+        temp: 0,
+        temp_min: 0,
+        temp_max: 0
+    }
+}
 
 export default function useWeather() {
 
-    const [weather, setWeather] = useState<Weather>({
-        name: '',
-        main: {
-            temp: 0,
-            temp_min: 0,
-            temp_max: 0
-        }
-
-    })
+    const [weather, setWeather] = useState<Weather>(initialState)
+    const [loading, setLoading] = useState(false)
 
     const fetchWeather = async (search: SearchType) => {
         const appId = import.meta.env.VITE_API_KEY
+        setLoading(true)
+        setWeather(initialState)
         try {
             const geoUrl = `http://api.openweathermap.org/geo/1.0/direct?q=${search.city},${search.country}&appid=${appId}`
             const { data } = await axios(geoUrl)
 
             const { lat, lon } = data[0]
 
-            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${appId}`
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${appId}`
 
             //Formas de validar types
             //Castear el type
@@ -96,12 +98,18 @@ export default function useWeather() {
         } catch (error) {
             console.log(error)
 
+        } finally {
+            setLoading(false)
         }
     }
 
+    const hasWeatherData = useMemo(() => weather.name, [weather])
+
     return {
         weather,
-        fetchWeather
+        loading,
+        fetchWeather,
+        hasWeatherData,
     }
 
 }
